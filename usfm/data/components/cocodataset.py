@@ -29,7 +29,7 @@ class CocoSegDataset(Dataset):
   def _update_annotations_info(self, json_file):
     with open(json_file, 'r') as f:
       self.annotations_info = json.load(f)
-      self.image_info = self.annotations_info['images']
+      image_info = self.annotations_info['images']
       self.annotations_map = {}
       annotations = self.annotations_info['annotations']
       
@@ -38,6 +38,7 @@ class CocoSegDataset(Dataset):
         if img_id not in self.annotations_map:
           self.annotations_map[img_id] = []
         self.annotations_map[img_id].append(ann)
+      self.image_info = [i for i in image_info if i['id'] in self.annotations_map]
 
   def __len__(self):
     return len(self.image_info)
@@ -50,4 +51,6 @@ class CocoSegDataset(Dataset):
     
     mask = load_mask(image_info, self.annotations_map[image_info['id']])
     return self.transforms(image=image, mask=mask)
+  
+
    
