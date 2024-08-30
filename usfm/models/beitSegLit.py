@@ -35,8 +35,8 @@ class BeitSegLit(LightningModule):
         self.test_loss = MeanMetric()
         self.train_acc_best = MaxMetric()
 
-        self.train_dice = Dice(num_classes=2, ignore_index=0)
-        self.val_dice = Dice(num_classes=2, ignore_index=0)
+        self.train_dice = Dice(num_classes=self.hparams.num_classes, ignore_index=0)
+        self.val_dice = Dice(num_classes=self.hparams.num_classes, ignore_index=0)
 
         self.loss = []
         self.outputs = []

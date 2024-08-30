@@ -1,0 +1,14 @@
+_target_: usfm.data.DS_Segdatamodule.DSSegCocoModule
+
+data_path:
+  data_root: "${data.data_DS_path}/liver_ultrasound/"
+  data_split:
+    train: train
+    val: valid
+    test: test
+    vis:
+      samples: 16
+      interval: 10
+  image_type: "jpg"
+
+transform:

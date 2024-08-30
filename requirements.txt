@@ -10,3 +10,8 @@ pre-commit
 rich
 pytest
 mmsegmentation>=1.0.0
+albumentations
+timm
+ftfy
+regex
+tensorboardX
