@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor
 
 
 class SegBaseDataset(Dataset):
-    def __init__(self, folder, transforms=None):
+    def __init__(self, folder, transforms):
         super().__init__()
         self.update_datalist(folder)
         self.transforms = transforms
@@ -21,8 +21,7 @@ class SegBaseDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
         mask = mask / np.max(mask)
-        if self.transforms is not None:
-            image_mask = self.transforms(image=image, mask=mask)
+        image_mask = self.transforms(image=image, mask=mask)
         return image_mask
 
     def update_datalist(self, folder):
@@ -53,8 +52,7 @@ class SegVocDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
         mask = mask / np.max(mask)
-        if self.transforms is not None:
-            image_mask = self.transforms(image=image, mask=mask)
+        image_mask = self.transforms(image=image, mask=mask)
         return image_mask
 
     def update_datalist(self, folder, data_type, image_type):

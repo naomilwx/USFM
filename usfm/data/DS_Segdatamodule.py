@@ -8,6 +8,7 @@ from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, Subset
 
 from usfm.data.components.segdataset import SegBaseDataset, SegVocDataset
+from usfm.data.components.cocodataset import CocoSegDataset
 
 train_transforms = A.Compose(
     [
@@ -221,3 +222,42 @@ if __name__ == "__main__":
             )
         )
         break
+
+class DSSegCocoModule(DSSegBaseModule):
+    def __init__(
+        self,
+        data_path,
+        transforms=None,
+        batch_size: int = 64,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        **kwargs,
+    ):
+        super().__init__(data_path, transforms, batch_size, num_workers, pin_memory, **kwargs)
+
+    def setup(self, stage: str = None) -> None:
+        data_root = self.hparams.data_path.data_root
+        data_split = self.hparams.data_path.data_split
+        if stage == "fit" or stage is None:
+            self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.train}", self.train_transforms)
+            if data_split.val is not None:
+                self.val_dataset = CocoSegDataset(f"{data_root}/{data_split.val}", self.train_transforms)
+            else:
+                self.val_dataset = None
+
+            if data_split.vis is not None and data_split.val is not None:
+                select_index = list(
+                    range(
+                        0,
+                        data_split.vis.samples,
+                        1,
+                    )
+                )
+                self.vis_dataset = Subset(self.val_dataset, select_index)
+            else:
+                self.vis_dataset = None
+
+        if stage == "test":
+            self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.test}", self.train_transforms)
+        else:
+            self.test_dataset = None
