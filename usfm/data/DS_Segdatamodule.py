@@ -162,7 +162,7 @@ class DSSegVocModule(DSSegBaseModule):
 
             if data_split.val is not None:
                 self.val_dataset = SegVocDataset(
-                    data_root, data_split.val, image_type, self.train_transforms
+                    data_root, data_split.val, image_type, self.val_transforms
                 )
             else:
                 self.val_dataset = None
@@ -181,7 +181,7 @@ class DSSegVocModule(DSSegBaseModule):
 
         if stage == "test":
             self.train_dataset = SegVocDataset(
-                data_root, data_split.test, image_type, self.train_transforms
+                data_root, data_split.test, image_type, self.val_transforms
             )
         else:
             self.test_dataset = None
@@ -241,7 +241,7 @@ class DSSegCocoModule(DSSegBaseModule):
         if stage == "fit" or stage is None:
             self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.train}", self.train_transforms)
             if data_split.val is not None:
-                self.val_dataset = CocoSegDataset(f"{data_root}/{data_split.val}", self.train_transforms)
+                self.val_dataset = CocoSegDataset(f"{data_root}/{data_split.val}", self.val_transforms)
             else:
                 self.val_dataset = None
 
@@ -258,6 +258,6 @@ class DSSegCocoModule(DSSegBaseModule):
                 self.vis_dataset = None
 
         if stage == "test":
-            self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.test}", self.train_transforms)
+            self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.test}", self.val_transforms)
         else:
             self.test_dataset = None
