@@ -6,16 +6,19 @@ import torchvision.transforms as T
 from albumentations.pytorch import ToTensorV2
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, Subset
+import json
 
 from usfm.data.components.segdataset import SegBaseDataset, SegVocDataset
 from usfm.data.components.cocodataset import CocoSegDataset
+from usfm.data.components.custom_dataset import CustomSegmentationDataset
 
 train_transforms = A.Compose(
     [
         A.Resize(width=512, height=512),
-        A.RandomRotate90(p=0.5),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
+        # A.RandomRotate90(p=0.5),
+        # A.HorizontalFlip(p=0.5),
+        # A.VerticalFlip(p=0.5),
+        A.Rotate(limit=(-15,15)),
         A.ToFloat(max_value=255),
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), max_pixel_value=1),
         ToTensorV2(),
@@ -31,6 +34,9 @@ val_transforms = A.Compose(
     ]
 )
 
+def load_json_file(file):
+  with open(file, 'r') as f:
+    return json.load(f)
 
 class DSSegBaseModule(LightningDataModule):
     def __init__(
@@ -186,43 +192,6 @@ class DSSegVocModule(DSSegBaseModule):
         else:
             self.test_dataset = None
 
-
-if __name__ == "__main__":
-    from omegaconf import DictConfig
-
-    data_path = {
-        "data_root": "data/DownStream/Seg/Thyroid/dataset_folder",
-        "data_split": {
-            "train": "training_set",
-            "val": "test_set",
-            "test": "test_set",
-            "vis": {"samples": 16, "interval": 10},
-        },
-    }
-    augmentation = {
-        "imagenet_default_mean_and_std": False,
-        "input_size": 224,
-        "patch_size": 16,
-        "second_input_size": 112,
-        "train_interpolation": "bicubic",
-        "second_interpolation": "lanczos",
-        "num_mask_patches": 75,
-        "min_mask_patches_per_block": 16,
-        "max_mask_patches_per_block": None,
-        "discrete_vae_type": "dall-e",
-    }
-    dm = DSSegBaseModule(data_path=DictConfig(data_path), augmentation=DictConfig(augmentation))
-    dm.setup()
-    print(f"len(train_dataloader): {len(dm.train_dataloader()):d}")
-    print(f"len(val_dataloader): {len(dm.val_dataloader()):d}")
-    for i, batch in enumerate(dm.train_dataloader()):
-        print(
-            "index: {:d}, image_shape: {:s}, mask_shape: {:s}".format(
-                i, str(batch["image"].shape), str(batch["mask"].shape)
-            )
-        )
-        break
-
 class DSSegCocoModule(DSSegBaseModule):
     def __init__(
         self,
@@ -261,3 +230,81 @@ class DSSegCocoModule(DSSegBaseModule):
             self.train_dataset = CocoSegDataset(f"{data_root}/{data_split.test}", self.val_transforms)
         else:
             self.test_dataset = None
+
+class DSSegCustom(DSSegBaseModule):
+    def __init__(
+        self,
+        data_path,
+        transforms=None,
+        batch_size: int = 64,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        **kwargs,
+    ):
+        super().__init__(data_path, transforms, batch_size, num_workers, pin_memory, **kwargs)
+
+    def setup(self, stage: str = None) -> None:
+        data_root = self.hparams.data_path.data_root
+        data_split = self.hparams.data_path.data_split
+
+        mask_labels = {'outline': 0, 'liver': 1, 'mass': 2} # TOD: read from config
+        
+        if stage == "fit" or stage is None:
+            self.train_dataset = CustomSegmentationDataset(data_root, load_json_file(data_split.train), mask_labels, self.train_transforms)
+            if data_split.val is not None:
+                self.val_dataset = CustomSegmentationDataset(data_root, load_json_file(data_split.val), mask_labels, self.val_transforms)
+            else:
+                self.val_dataset = None
+
+            if data_split.vis is not None and data_split.val is not None:
+                select_index = list(
+                    range(
+                        0,
+                        data_split.vis.samples,
+                        1,
+                    )
+                )
+                self.vis_dataset = Subset(self.val_dataset, select_index)
+            else:
+                self.vis_dataset = None
+
+        if stage == "test":
+            self.train_dataset = CustomSegmentationDataset(data_root, load_json_file(data_split.test), mask_labels, self.val_transforms)
+        else:
+            self.test_dataset = None
+
+if __name__ == "__main__":
+    from omegaconf import DictConfig
+
+    data_path = {
+        "data_root": "data/DownStream/Seg/Thyroid/dataset_folder",
+        "data_split": {
+            "train": "training_set",
+            "val": "test_set",
+            "test": "test_set",
+            "vis": {"samples": 16, "interval": 10},
+        },
+    }
+    augmentation = {
+        "imagenet_default_mean_and_std": False,
+        "input_size": 224,
+        "patch_size": 16,
+        "second_input_size": 112,
+        "train_interpolation": "bicubic",
+        "second_interpolation": "lanczos",
+        "num_mask_patches": 75,
+        "min_mask_patches_per_block": 16,
+        "max_mask_patches_per_block": None,
+        "discrete_vae_type": "dall-e",
+    }
+    dm = DSSegBaseModule(data_path=DictConfig(data_path), augmentation=DictConfig(augmentation))
+    dm.setup()
+    print(f"len(train_dataloader): {len(dm.train_dataloader()):d}")
+    print(f"len(val_dataloader): {len(dm.val_dataloader()):d}")
+    for i, batch in enumerate(dm.train_dataloader()):
+        print(
+            "index: {:d}, image_shape: {:s}, mask_shape: {:s}".format(
+                i, str(batch["image"].shape), str(batch["mask"].shape)
+            )
+        )
+        break
